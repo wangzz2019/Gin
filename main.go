@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	gintrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/gin-gonic/gin"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -27,9 +30,9 @@ func main() {
 			// The profiles below are disabled by default to keep overhead
 			// low, but can be enabled as needed.
 
-			// profiler.BlockProfile,
-			// profiler.MutexProfile,
-			// profiler.GoroutineProfile,
+			profiler.BlockProfile,
+			profiler.MutexProfile,
+			profiler.GoroutineProfile,
 		),
 	)
 	if err != nil {
@@ -44,15 +47,23 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		c.String(200, "Hello, Jack Wang")
 	})
-
+	// go goroutine()
 	r.Run() // listen and serve on 0.0.0.0:8080
+}
+func goroutine(c *gin.Context) {
+	parentSpan, _ := tracer.SpanFromContext(c.Request.Context())
+	span := tracer.StartSpan("goroutine", tracer.ResourceName("goroutine"), tracer.ChildOf(parentSpan.Context()))
+	defer parentSpan.Finish()
+	defer span.Finish()
+	time.Sleep(10 * time.Second)
+	fmt.Println(2)
 }
 func test(c *gin.Context) {
 	parentSpan, _ := tracer.SpanFromContext(c.Request.Context())
 	span := tracer.StartSpan("test", tracer.ResourceName("GET /test111"), tracer.ChildOf(parentSpan.Context()))
 	defer parentSpan.Finish()
 	defer span.Finish()
-
+	go goroutine(c)
 	span.SetTag("tag1", "value1")
 	c.String(200, "This is Jack Wang's test page")
 }
